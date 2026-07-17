@@ -2,6 +2,6 @@ streamlit==1.36.0
 pandas
 numpy
 scikit-learn
-matplotlib
-seaborn
+matplotlib>=3.8.0
+seaborn>=0.13.0
 pyyaml
