@@ -550,8 +550,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.express as px # Added Plotly for interactive charts
-import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
@@ -560,7 +560,36 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Set page configuration
-st.set_page_config(page_title="PharmaLens | Project Astra", page_icon="💊", layout="wide")
+st.set_page_config(page_title="Veracity | District Intelligence", page_icon="📈", layout="wide")
+
+# Custom CSS for better structure and readability
+st.markdown("""
+<style>
+    .metric-card {
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+    }
+    .metric-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+    .metric-label {
+        font-size: 14px;
+        color: #7f8c8d;
+    }
+    .info-box {
+        background-color: #e8f4f8;
+        border-left: 5px solid #3498db;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # =========================================================
 # 1. HARDCODED CONFIGURATION 
@@ -604,21 +633,18 @@ CONFIG = {
 }
 
 # =========================================================
-# 2. PIPELINE CLASS (Embedded v2)
+# 2. PIPELINE CLASS
 # =========================================================
 class MAIPipeline:
     def __init__(self, df: pd.DataFrame, cfg: dict):
         self.cfg = cfg
         self.raw = df.copy()
         
-        # Standardize column names to lowercase for robust matching
         self.df = df.copy()
         self.df.columns = [c.lower().strip() for c in self.df.columns]
         
-        # Dynamically map available ID columns
         self.id_cols = [c for c in self.cfg["id_columns"] if c in self.df.columns]
         if not self.id_cols:
-            # Fallback if no matching ID columns are found
             self.df["district"] = [f"District_{i}" for i in range(len(self.df))]
             self.id_cols = ["district"]
             
@@ -938,246 +964,259 @@ class MAIPipeline:
 # 3. STREAMLIT DASHBOARD UI
 # =========================================================
 
-# Custom CSS to make it look like a professional consulting platform
-st.markdown("""
-<style>
-    .reportview-container {
-        background: #f4f7f6;
-    }
-    .sidebar .sidebar-content {
-        background: #2C3E50;
-        color: white;
-    }
-    h1, h2, h3 {
-        color: #1E3A8A;
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    }
-    .stMetric-value {
-        color: #2563EB;
-        font-weight: 700;
-    }
-    .metric-container {
-        background-color: white;
-        padding: 15px;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        margin-bottom: 10px;
-    }
-    .instruction-box {
-        background-color: #E0F2FE;
-        border-left: 5px solid #2563EB;
-        padding: 20px;
-        border-radius: 5px;
-        margin-bottom: 20px;
-    }
-</style>
-""", unsafe_allow_html=True)
+st.title("Veracity: District Intelligence Platform")
+st.markdown("**Sun Pharma Market Attractiveness Framework**")
 
+st.sidebar.header("Data Upload & Controls")
+st.sidebar.markdown("Upload your `master_district_pharma_data.csv` to generate the MAI rankings and visualizations.")
 
-st.title("PharmaLens: District Intelligence Platform")
-st.markdown("**Project Astra** - Sun Pharma Trilytics Challenge Executive Dashboard")
+uploaded_file = st.sidebar.file_uploader("Upload District Data (CSV)", type=["csv"])
 
-st.sidebar.image("https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Sun_Pharma_logo.svg/1200px-Sun_Pharma_logo.svg.png", width=150)
-st.sidebar.markdown("---")
-st.sidebar.header("1. Upload Data")
-st.sidebar.markdown("Please upload your finalized `master_district_pharma_data.csv` to activate the pipeline.")
-
-uploaded_file = st.sidebar.file_uploader("", type=["csv"])
-
-st.sidebar.markdown("---")
-st.sidebar.header("2. About the Methodology")
-with st.sidebar.expander("How are scores calculated?"):
-    st.markdown("""
-    **Project Astra uses a 3-way hybrid weighting model to ensure objectivity:**
-    *   **33% PCA (Variance-based):** Rewards variables that distinctively segment districts.
-    *   **33% Entropy (Information-Density):** Punishes metrics with zero variance (e.g., if every district has exactly 1 hospital).
-    *   **33% AHP (Business Logic):** Ensures strategic alignment with commercial priorities.
-    """)
-
-# If NO file is uploaded, show the welcome/instruction screen.
+# ---------------------------------------------------------
+# NO FILE UPLOADED STATE: Show Methodology & Guidelines
+# ---------------------------------------------------------
 if uploaded_file is None:
     st.markdown("""
-    <div class="instruction-box">
-        <h3>👋 Welcome to Project Astra</h3>
-        <p>This platform requires district-level health and economic data to generate strategic insights. 
-        <b>Please use the sidebar on the left to upload your CSV file.</b></p>
+    <div class="info-box">
+        <h3>👋 Welcome to Veracity</h3>
+        <p>This platform evaluates over 700 Indian districts to identify pharmaceutical market attractiveness. 
+        It moves beyond static rankings by incorporating predictive growth models, objective entropy weighting, and competitive whitespace analysis.</p>
+        <p><b>Please upload your CSV file in the sidebar to activate the intelligence engine.</b></p>
     </div>
     """, unsafe_allow_html=True)
     
-    st.markdown("### Expected Data Pillars")
-    col_a, col_b, col_c = st.columns(3)
-    with col_a:
-        st.markdown("**📊 Market Size & Demographics**")
-        st.caption("e.g., population_total, pct_urban")
-    with col_b:
-        st.markdown("**🏥 Disease Burden (NFHS-5/HMIS)**")
-        st.caption("e.g., pct_diabetes_highsugar, pct_ari_children")
-    with col_c:
-        st.markdown("**💸 Affordability & Infrastructure**")
-        st.caption("e.g., per_capita_income, doctors_per_1000")
+    st.header("Expected Data Parameters")
+    st.markdown("Your uploaded CSV should ideally contain the following columns to generate the most accurate insights. *Note: The model will automatically adapt and mathematically impute any missing data based on regional medians.*")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("1. Demand & Demographics")
+        st.markdown("""
+        *   **`population_total`**: Absolute district population (defines total addressable volume).
+        *   **`pct_urban`**: Urbanization percentage.
+        *   **`pct_diabetes_highsugar`**: NCD prevalence (Drives Chronic MAI).
+        *   **`pct_hypertension`**: Cardiovascular risk prevalence.
+        *   **`pct_ari_children`**: Acute respiratory infections (Drives Acute MAI).
+        """)
+        
+        st.subheader("2. Access & Infrastructure")
+        st.markdown("""
+        *   **`doctors_per_1000`**: Clinical provider density. *(Scored dynamically: low density + high demand = high opportunity).*
+        *   **`beds_per_1000`**: Hospital bed capacity.
+        """)
 
-    st.stop() # Stops the rest of the code from running until a file is uploaded
+    with col2:
+        st.subheader("3. Economics & Competition")
+        st.markdown("""
+        *   **`per_capita_income`**: Defines out-of-pocket spending capability.
+        *   **`pmjay_enrollment_rate`**: Ayushman Bharat coverage (institutional spending proxy).
+        *   **`pharmacy_density`**: Retail channel maturity.
+        *   **`jan_aushadhi_density`**: Government generic competition *(Scored negatively: higher density = lower attractiveness).*
+        """)
+        
+        st.subheader("4. Growth Trends (Future Forecasts)")
+        st.markdown("""
+        *   **`urbanization_growth`**: 5-year urban shift trend.
+        *   **`income_growth_cagr`**: Income growth velocity.
+        *   **`ncd_risk_trend`**: Rate of increase in chronic diseases.
+        """)
+        
+    st.stop() # Halts execution here until a file is uploaded
 
-# Once a file IS uploaded, run the engine
+# ---------------------------------------------------------
+# FILE UPLOADED STATE: Run Engine and Show Dashboard
+# ---------------------------------------------------------
 raw_df = pd.read_csv(uploaded_file)
-st.sidebar.success("File ingested successfully. Engine is live.")
+st.sidebar.success("File uploaded successfully!")
 
-with st.spinner('Running AI Assessment & Mathematical Modeling...'):
+with st.spinner('Running Statistical Assessment & Weighting Engine...'):
     pipe = MAIPipeline(raw_df, CONFIG)
     pipe.build_all_indices().opportunity_gap_score().emerging_opportunity_index()
     pipe.project_future(years=3).segment_districts(k=4).apply_recommendations()
     final_df = pipe.df
 
-# Create the Tabs
-tab1, tab2, tab3 = st.tabs(["📊 Executive Overview", "📈 Interactive Strategic Matrices", "📄 AI District Deep-Dive"])
+tab1, tab2, tab3 = st.tabs(["📊 District Rankings", "📈 Strategic Matrices", "📄 Executive Deep-Dive"])
 
 with tab1:
     st.header("Overall Market Attractiveness Index (MAI)")
-    st.markdown("Ranked list of all uploaded districts based on current strategic potential, paired with algorithmic field force recommendations.")
+    st.markdown("""
+    <div style='background: #f8f9fa; padding: 10px; border-radius: 5px; border-left: 4px solid #2ecc71; margin-bottom: 15px;'>
+        <b>What is this?</b> A blended macro-economic index that considers current population scale, total wealth, and existing healthcare infrastructure. Use this to guide broad, national-level territory planning.
+    </div>
+    """, unsafe_allow_html=True)
     
-    display_cols = ["rank", "state", "district", "overall_MAI", "opportunity_gap_score", "segment_label", "recommended_strategy"]
+    display_cols = ["rank", "state", "district", "overall_MAI", "overall_MAI_future", "opportunity_gap_score", "segment_label", "recommended_strategy"]
     rk_df = pipe.get_rankings("overall")
     if not rk_df.empty:
         available_cols = [c for c in display_cols if c in rk_df.columns]
         st.dataframe(rk_df[available_cols], use_container_width=True, hide_index=True)
     
     st.markdown("---")
-    col1, col2 = st.columns(2)
     
+    col1, col2 = st.columns(2)
     with col1:
-        st.markdown("<div class='metric-container'>", unsafe_allow_html=True)
-        st.subheader("🚀 Emerging Opportunity Index")
-        st.markdown("*Focuses strictly on 5-year growth trajectory, independent of current market size. Answers: **Where should we plant flags today for tomorrow's revenue?***")
+        st.subheader("Emerging Opportunity Index")
+        st.markdown("""
+        <div style='font-size: 13px; color: #555; margin-bottom: 10px;'>
+            <b>Objective:</b> Identifies "tomorrow's markets." This index entirely ignores current market size and focuses strictly on growth velocity (Income CAGR, Urbanization trends, NCD risk spikes).
+        </div>
+        """, unsafe_allow_html=True)
         
+        # Safe-check to prevent crash if user forgot trend variables
         if "emerging_opportunity_index" in final_df.columns and final_df["emerging_opportunity_index"].max() > 0:
             emerg_rk = final_df.sort_values("emerging_opportunity_index", ascending=False).reset_index(drop=True)
             emerg_rk.insert(0, "rank", emerg_rk.index + 1)
             avail_emerg = [c for c in ["rank", "district", "overall_MAI", "emerging_opportunity_index", "recommended_strategy"] if c in emerg_rk.columns]
-            st.dataframe(emerg_rk[avail_emerg].head(10), use_container_width=True, hide_index=True)
+            st.dataframe(emerg_rk[avail_emerg], use_container_width=True, hide_index=True)
         else:
-            st.info("Growth trend data not detected in uploaded file. Please include variables like `urbanization_growth` and `income_growth_cagr` to unlock 5-year predictive forecasting.")
-        st.markdown("</div>", unsafe_allow_html=True)
-            
+            st.warning("Upload a dataset containing trend variables (e.g., `urbanization_growth`, `income_growth_cagr`) to activate the Emerging Opportunity Index.")
+    
     with col2:
-        st.markdown("<div class='metric-container'>", unsafe_allow_html=True)
-        st.subheader("🫀 Chronic Therapy Hotspots")
-        st.markdown("*Ranks markets based heavily on NFHS-5 lifestyle disease prevalence (Diabetes/Hypertension) and specialist provider availability.*")
+        st.subheader("Chronic Therapy Hotspots")
+        st.markdown("""
+        <div style='font-size: 13px; color: #555; margin-bottom: 10px;'>
+            <b>Objective:</b> Ranks markets heavily weighted towards NFHS-5 lifestyle diseases (Diabetes/Hypertension) and high-income bands. Use this for deploying specialist cardiovascular/metabolic representatives.
+        </div>
+        """, unsafe_allow_html=True)
         chronic_rk = pipe.get_rankings("chronic")
         if not chronic_rk.empty:
             avail_chron = [c for c in ["rank", "district", "chronic_MAI", "segment_label"] if c in chronic_rk.columns]
-            st.dataframe(chronic_rk[avail_chron].head(10), use_container_width=True, hide_index=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+            st.dataframe(chronic_rk[avail_chron], use_container_width=True, hide_index=True)
 
 with tab2:
-    st.header("Interactive Strategy Matrices")
-    st.markdown("Hover over the data points to view specific district details and recommendations.")
+    st.header("Visual Strategy Matrices")
+    st.markdown("These matrices translate raw statistical scores into actionable portfolio and deployment strategies.")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("Therapy Skew vs. Attractiveness")
-        with st.expander("How to read this chart"):
-            st.write("""
-            **X-Axis (Overall MAI):** Represents the total commercial value of the district.
-            **Y-Axis (Therapy Skew):** Calculated as `Chronic MAI - Acute MAI`. 
-            *   Districts high on the Y-Axis require specialized MRs focusing on cardiovascular and metabolic portfolios.
-            *   Districts low on the Y-Axis require high-volume trade reps pushing anti-infectives and seasonal acute therapies.
-            """)
-            
+        st.subheader("Therapy Skew vs Attractiveness")
+        st.markdown("""
+        **How to read this chart:**
+        * **Y-Axis (Therapy Skew):** Calculated as `Chronic MAI - Acute MAI`. 
+            * **Above 0:** District leans Chronic. Deploy specialist MRs.
+            * **Below 0:** District leans Acute. Deploy high-volume trade reps.
+        * **X-Axis:** Overall size and commercial viability of the market.
+        """)
+        
         if "chronic_MAI" in final_df.columns and "acute_MAI" in final_df.columns:
-            final_df["Therapy_Skew"] = final_df["chronic_MAI"] - final_df["acute_MAI"]
+            fig, ax = plt.subplots(figsize=(8, 6))
+            sns.set_theme(style="whitegrid")
+            skew = final_df["chronic_MAI"] - final_df["acute_MAI"]
             
-            fig = px.scatter(
-                final_df, 
+            sns.scatterplot(
+                data=final_df, 
                 x="overall_MAI", 
-                y="Therapy_Skew", 
-                color="segment_label" if "segment_label" in final_df.columns else None,
-                hover_name="district",
-                hover_data=["state", "recommended_strategy"],
-                labels={"overall_MAI": "Overall MAI Score (Size & Wealth)", "Therapy_Skew": "Therapy Skew (Positive = Chronic Leaning)"},
-                title="Portfolio Optimization Mapping",
-                template="plotly_white",
-                size_max=12
+                y=skew, 
+                hue="segment_label" if "segment_label" in final_df.columns else None, 
+                s=120, 
+                palette="muted", 
+                edgecolor="w", 
+                alpha=0.8, 
+                ax=ax
             )
-            fig.update_traces(marker=dict(size=10, line=dict(width=1, color='DarkSlateGrey')))
-            fig.add_hline(y=0, line_dash="dash", line_color="gray")
-            # Move legend to bottom for better space utilization
-            fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5))
-            st.plotly_chart(fig, use_container_width=True)
+            
+            ax.axhline(0, color="gray", linestyle="--")
+            ax.set_xlabel("Overall MAI (Market Scale)", fontweight='bold')
+            ax.set_ylabel("Therapy Skew (Positive = Chronic Leaning)", fontweight='bold')
+            
+            # Move legend to bottom so it doesn't compress the chart horizontally
+            ax.legend(bbox_to_anchor=(0.5, -0.15), loc='upper center', ncol=2)
+            plt.tight_layout()
+            st.pyplot(fig)
             
     with col2:
-        st.subheader("The 'Hidden-Gem' Finder")
-        with st.expander("What is the Opportunity Gap?"):
-            st.write("""
-            The Opportunity Gap isolates the difference between underlying **Patient Demand** (population, disease prevalence) and **Healthcare Supply/Competition** (doctor density, rival pharmacies).
-            *   **Top Right (Green Zone):** Highly attractive markets that are surprisingly underserved. These are immediate targets for rapid expansion and stockist acquisition.
-            """)
-            
+        st.subheader("Opportunity Gap Analysis")
+        st.markdown("""
+        **How to read this chart:**
+        * **Y-Axis (Opportunity Gap):** Identifies 'Hidden Gems'. A high score means the district has massive underlying patient demand, but very low provider supply or competitor density.
+        * **Action:** Districts in the top-right are prime targets for aggressive, immediate expansion before rivals enter.
+        """)
+        
         if "opportunity_gap_score" in final_df.columns and final_df["opportunity_gap_score"].max() > 0:
-            fig2 = px.scatter(
-                final_df, 
+            fig2, ax2 = plt.subplots(figsize=(8, 6))
+            sns.set_theme(style="whitegrid")
+            
+            sns.scatterplot(
+                data=final_df, 
                 x="overall_MAI", 
                 y="opportunity_gap_score", 
-                color="opportunity_gap_score",
-                color_continuous_scale="Viridis",
-                hover_name="district",
-                hover_data=["state", "segment_label"],
-                labels={"overall_MAI": "Overall MAI", "opportunity_gap_score": "Opportunity Gap Score"},
-                title="Identifying Underserved High-Demand Markets",
-                template="plotly_white"
+                color="#2980b9", 
+                s=120, 
+                alpha=0.7, 
+                edgecolor="w", 
+                ax=ax2
             )
-            fig2.update_traces(marker=dict(size=12, opacity=0.8, line=dict(width=1, color='White')))
-            st.plotly_chart(fig2, use_container_width=True)
+            
+            # Annotate the top 5 outliers for immediate business insight
+            top_gap = final_df.nlargest(5, "opportunity_gap_score")
+            for _, row in top_gap.iterrows():
+                if "district" in row:
+                    ax2.annotate(row["district"], (row["overall_MAI"], row["opportunity_gap_score"]), 
+                                 xytext=(5, 5), textcoords="offset points", fontsize=9, fontweight='bold', color="#2c3e50")
+                
+            ax2.set_xlabel("Overall MAI (Market Scale)", fontweight='bold')
+            ax2.set_ylabel("Opportunity Gap Score (Unmet Demand)", fontweight='bold')
+            plt.tight_layout()
+            st.pyplot(fig2)
         else:
-            st.info("Upload provider metrics (e.g., `doctors_per_1000`) to unlock the Opportunity Gap Analysis.")
+            st.info("Upload provider metrics (e.g., `doctors_per_1000`) to unlock the Opportunity Gap Chart.")
 
 with tab3:
     st.header("Explainable AI: District Intelligence Reports")
-    st.markdown("Select a district to view an algorithmic decomposition of its score. **Trust is built on transparency.**")
+    st.markdown("Veracity does not use black-box scoring. Select any district to see the exact linear contribution decomposition driving its rank.")
     
     if "district" in final_df.columns:
-        district_list = sorted(final_df["district"].unique())
-        selected_district = st.selectbox("Select Target District for Analysis:", district_list)
+        selected_district = st.selectbox("Select Target District:", final_df["district"].unique())
         
         if selected_district:
             exp = pipe.explain_district(selected_district, "overall")
             row = final_df[final_df["district"] == selected_district].iloc[0]
             
             if exp:
-                st.markdown(f"<div class='instruction-box' style='background-color:#F0FDF4; border-left-color:#16A34A;'><b>🤖 AI Field Directive:</b> {row.get('recommended_strategy', 'N/A')}</div>", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div style='background-color:#e8f8f5; border: 1px solid #2ecc71; padding: 15px; border-radius: 8px; margin-bottom: 20px;'>
+                    <h4 style='margin-top:0; color:#27ae60;'>📋 Strategic Field Directive</h4>
+                    <p style='margin-bottom:0; font-size:16px;'><b>{row.get('recommended_strategy', 'N/A')}</b></p>
+                </div>
+                """, unsafe_allow_html=True)
                 
                 c1, c2, c3, c4 = st.columns(4)
                 with c1:
-                    st.markdown("<div class='metric-container'>", unsafe_allow_html=True)
-                    st.metric("Overall MAI", exp["score"], delta=f"{row.get('overall_MAI_future', 'N/A')} (2031 Proj.)" if "overall_MAI_future" in row else None)
-                    st.markdown("</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='metric-card'><div class='metric-label'>Overall MAI</div><div class='metric-value'>{exp['score']}</div></div>", unsafe_allow_html=True)
                 with c2:
-                    st.markdown("<div class='metric-container'>", unsafe_allow_html=True)
-                    st.metric("Opportunity Gap", row.get("opportunity_gap_score", "N/A"))
-                    st.markdown("</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='metric-card'><div class='metric-label'>Projected 2031 MAI</div><div class='metric-value'>{row.get('overall_MAI_future', 'N/A')}</div></div>", unsafe_allow_html=True)
                 with c3:
-                    st.markdown("<div class='metric-container'>", unsafe_allow_html=True)
-                    st.metric("Data Confidence", f"{row.get('data_confidence_score', 'N/A')}%")
-                    st.markdown("</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='metric-card'><div class='metric-label'>Data Confidence</div><div class='metric-value'>{row.get('data_confidence_score', 'N/A')}%</div></div>", unsafe_allow_html=True)
                 with c4:
-                    st.markdown("<div class='metric-container'>", unsafe_allow_html=True)
-                    st.metric("Segment Profile", row.get("segment_label", "N/A"))
-                    st.markdown("</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='metric-card'><div class='metric-label'>Persona Segment</div><div class='metric-value' style='font-size:18px;'>{row.get('segment_label', 'N/A')}</div></div>", unsafe_allow_html=True)
                 
-                st.markdown("### Algorithm Score Decomposition")
-                st.markdown(f"*Showing linear contribution to the final score vs. the national portfolio average of **{exp['avg_score']}**.*")
+                st.write("")
+                st.write("---")
+                st.subheader("Algorithmic Score Decomposition")
+                st.markdown(f"*Showing how specific variables pushed this district above or below the national portfolio average score of **{exp['avg_score']}**.*")
                 
                 col_pos, col_neg = st.columns(2)
                 with col_pos:
-                    st.success("**✅ Structural Strengths (Positive Score Drivers)**")
+                    st.success("**✅ Structural Strengths (Positive Drivers)**")
                     for v, c in exp["top_positive"]:
                         if c > 0: 
                             clean_name = v.replace('_', ' ').title()
-                            st.markdown(f"**{clean_name}**: <span style='color:green;'>+{c:.1f} pts</span>", unsafe_allow_html=True)
+                            st.markdown(f"**{clean_name}**: <span style='color:green;'>+{c:.1f} points</span>", unsafe_allow_html=True)
                         
                 with col_neg:
-                    st.error("**⚠️ Structural Weaknesses (Negative Score Drivers)**")
+                    st.error("**⚠️ Structural Weaknesses (Negative Drivers)**")
                     for v, c in exp["top_negative"]:
                         if c < 0: 
                             clean_name = v.replace('_', ' ').title()
-                            st.markdown(f"**{clean_name}**: <span style='color:red;'>{c:.1f} pts</span>", unsafe_allow_html=True)
+                            st.markdown(f"**{clean_name}**: <span style='color:red;'>{c:.1f} points</span>", unsafe_allow_html=True)
+                            
+                with st.expander("📖 Data Dictionary: What do these parameters mean?"):
+                    st.markdown("""
+                    * **Population Total**: The absolute demographic scale. High values indicate a large addressable market for high-volume acute therapies.
+                    * **Pct Urban**: Percentage of population living in cities. Highly correlated with retail pharmacy penetration and modern trade access.
+                    * **Pct Diabetes Highsugar**: The prevalence of metabolic syndrome. A primary driver for chronic and cardiovascular therapeutic portfolios.
+                    * **Doctors per 1000**: Clinical provider density. Scored uniquely—extremely low density flags an underdeveloped market, but *moderate* density flags an underserved "white space" opportunity.
+                    * **Per Capita Income**: Economic purchasing power. Essential for predicting uptake of premium branded generics and out-of-pocket expenditure capacity.
+                    * **PMJAY Enrollment Rate**: Institutional insurance coverage, which drives hospital-based bulk procurement and generic utilization.
+                    """)
