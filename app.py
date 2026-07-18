@@ -550,8 +550,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plotly.express as px
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
@@ -562,27 +561,11 @@ warnings.filterwarnings('ignore')
 # Set page configuration
 st.set_page_config(page_title="Veracity | District Intelligence", page_icon="📈", layout="wide")
 
-# Custom CSS for better structure and readability
+# Custom CSS for the intro box - using rgba so text adapts to dark/light mode automatically
 st.markdown("""
 <style>
-    .metric-card {
-        background-color: #f8f9fa;
-        border: 1px solid #e9ecef;
-        padding: 15px;
-        border-radius: 8px;
-        text-align: center;
-    }
-    .metric-value {
-        font-size: 24px;
-        font-weight: bold;
-        color: #2c3e50;
-    }
-    .metric-label {
-        font-size: 14px;
-        color: #7f8c8d;
-    }
     .info-box {
-        background-color: #e8f4f8;
+        background-color: rgba(52, 152, 219, 0.1);
         border-left: 5px solid #3498db;
         padding: 15px;
         margin-bottom: 20px;
@@ -1029,7 +1012,7 @@ if uploaded_file is None:
 raw_df = pd.read_csv(uploaded_file)
 st.sidebar.success("File uploaded successfully!")
 
-with st.spinner('Running Statistical Assessment & Weighting Engine...'):
+with st.spinner('Running AI Assessment & Mathematical Modeling...'):
     pipe = MAIPipeline(raw_df, CONFIG)
     pipe.build_all_indices().opportunity_gap_score().emerging_opportunity_index()
     pipe.project_future(years=3).segment_districts(k=4).apply_recommendations()
@@ -1040,10 +1023,8 @@ tab1, tab2, tab3 = st.tabs(["📊 District Rankings", "📈 Strategic Matrices",
 with tab1:
     st.header("Overall Market Attractiveness Index (MAI)")
     st.markdown("""
-    <div style='background: #f8f9fa; padding: 10px; border-radius: 5px; border-left: 4px solid #2ecc71; margin-bottom: 15px;'>
-        <b>What is this?</b> A blended macro-economic index that considers current population scale, total wealth, and existing healthcare infrastructure. Use this to guide broad, national-level territory planning.
-    </div>
-    """, unsafe_allow_html=True)
+    **What is this?** A blended macro-economic index that considers current population scale, total wealth, and existing healthcare infrastructure. Use this to guide broad, national-level territory planning.
+    """)
     
     display_cols = ["rank", "state", "district", "overall_MAI", "overall_MAI_future", "opportunity_gap_score", "segment_label", "recommended_strategy"]
     rk_df = pipe.get_rankings("overall")
@@ -1056,13 +1037,8 @@ with tab1:
     col1, col2 = st.columns(2)
     with col1:
         st.subheader("Emerging Opportunity Index")
-        st.markdown("""
-        <div style='font-size: 13px; color: #555; margin-bottom: 10px;'>
-            <b>Objective:</b> Identifies "tomorrow's markets." This index entirely ignores current market size and focuses strictly on growth velocity (Income CAGR, Urbanization trends, NCD risk spikes).
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown("**Objective:** Identifies 'tomorrow's markets.' Independent of current size—pure forward signal.")
         
-        # Safe-check to prevent crash if user forgot trend variables
         if "emerging_opportunity_index" in final_df.columns and final_df["emerging_opportunity_index"].max() > 0:
             emerg_rk = final_df.sort_values("emerging_opportunity_index", ascending=False).reset_index(drop=True)
             emerg_rk.insert(0, "rank", emerg_rk.index + 1)
@@ -1073,11 +1049,7 @@ with tab1:
     
     with col2:
         st.subheader("Chronic Therapy Hotspots")
-        st.markdown("""
-        <div style='font-size: 13px; color: #555; margin-bottom: 10px;'>
-            <b>Objective:</b> Ranks markets heavily weighted towards NFHS-5 lifestyle diseases (Diabetes/Hypertension) and high-income bands. Use this for deploying specialist cardiovascular/metabolic representatives.
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown("**Objective:** Ranks markets heavily weighted towards NFHS-5 lifestyle diseases (Diabetes/Hypertension) and high-income bands.")
         chronic_rk = pipe.get_rankings("chronic")
         if not chronic_rk.empty:
             avail_chron = [c for c in ["rank", "district", "chronic_MAI", "segment_label"] if c in chronic_rk.columns]
@@ -1085,80 +1057,71 @@ with tab1:
 
 with tab2:
     st.header("Visual Strategy Matrices")
-    st.markdown("These matrices translate raw statistical scores into actionable portfolio and deployment strategies.")
+    st.markdown("Hover over any dot on the matrices below to view specific district details and strategic directives.")
     
     col1, col2 = st.columns(2)
     
     with col1:
         st.subheader("Therapy Skew vs Attractiveness")
         st.markdown("""
-        **How to read this chart:**
-        * **Y-Axis (Therapy Skew):** Calculated as `Chronic MAI - Acute MAI`. 
-            * **Above 0:** District leans Chronic. Deploy specialist MRs.
-            * **Below 0:** District leans Acute. Deploy high-volume trade reps.
-        * **X-Axis:** Overall size and commercial viability of the market.
+        * **Above 0:** District leans Chronic. Deploy specialist MRs.
+        * **Below 0:** District leans Acute. Deploy high-volume trade reps.
         """)
         
         if "chronic_MAI" in final_df.columns and "acute_MAI" in final_df.columns:
-            fig, ax = plt.subplots(figsize=(8, 6))
-            sns.set_theme(style="whitegrid")
-            skew = final_df["chronic_MAI"] - final_df["acute_MAI"]
-            
-            sns.scatterplot(
-                data=final_df, 
-                x="overall_MAI", 
-                y=skew, 
-                hue="segment_label" if "segment_label" in final_df.columns else None, 
-                s=120, 
-                palette="muted", 
-                edgecolor="w", 
-                alpha=0.8, 
-                ax=ax
+            final_df["therapy_skew"] = final_df["chronic_MAI"] - final_df["acute_MAI"]
+            fig1 = px.scatter(
+                final_df,
+                x="overall_MAI",
+                y="therapy_skew",
+                color="segment_label" if "segment_label" in final_df.columns else None,
+                hover_name="district",
+                hover_data={
+                    "overall_MAI": True,
+                    "therapy_skew": True,
+                    "chronic_MAI": True,
+                    "acute_MAI": True,
+                    "segment_label": False
+                },
+                labels={
+                    "overall_MAI": "Overall MAI (Market Scale)",
+                    "therapy_skew": "Therapy Skew (Chronic - Acute)",
+                    "segment_label": "Segment"
+                }
             )
-            
-            ax.axhline(0, color="gray", linestyle="--")
-            ax.set_xlabel("Overall MAI (Market Scale)", fontweight='bold')
-            ax.set_ylabel("Therapy Skew (Positive = Chronic Leaning)", fontweight='bold')
-            
-            # Move legend to bottom so it doesn't compress the chart horizontally
-            ax.legend(bbox_to_anchor=(0.5, -0.15), loc='upper center', ncol=2)
-            plt.tight_layout()
-            st.pyplot(fig)
+            fig1.add_hline(y=0, line_dash="dash", line_color="gray")
+            fig1.update_traces(marker=dict(size=10, opacity=0.8, line=dict(width=1, color="DarkSlateGrey")))
+            fig1.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", margin=dict(l=0, r=0, t=30, b=0))
+            st.plotly_chart(fig1, use_container_width=True)
             
     with col2:
         st.subheader("Opportunity Gap Analysis")
         st.markdown("""
-        **How to read this chart:**
-        * **Y-Axis (Opportunity Gap):** Identifies 'Hidden Gems'. A high score means the district has massive underlying patient demand, but very low provider supply or competitor density.
-        * **Action:** Districts in the top-right are prime targets for aggressive, immediate expansion before rivals enter.
+        * **Top-Right:** 'Hidden Gems'. High patient demand, but very low provider supply or competitor density.
         """)
         
         if "opportunity_gap_score" in final_df.columns and final_df["opportunity_gap_score"].max() > 0:
-            fig2, ax2 = plt.subplots(figsize=(8, 6))
-            sns.set_theme(style="whitegrid")
-            
-            sns.scatterplot(
-                data=final_df, 
-                x="overall_MAI", 
-                y="opportunity_gap_score", 
-                color="#2980b9", 
-                s=120, 
-                alpha=0.7, 
-                edgecolor="w", 
-                ax=ax2
+            fig2 = px.scatter(
+                final_df,
+                x="overall_MAI",
+                y="opportunity_gap_score",
+                color="segment_label" if "segment_label" in final_df.columns else None,
+                hover_name="district",
+                hover_data={
+                    "overall_MAI": True,
+                    "opportunity_gap_score": True,
+                    "recommended_strategy": True,
+                    "segment_label": False
+                },
+                labels={
+                    "overall_MAI": "Overall MAI (Market Scale)",
+                    "opportunity_gap_score": "Opportunity Gap Score",
+                    "segment_label": "Segment"
+                }
             )
-            
-            # Annotate the top 5 outliers for immediate business insight
-            top_gap = final_df.nlargest(5, "opportunity_gap_score")
-            for _, row in top_gap.iterrows():
-                if "district" in row:
-                    ax2.annotate(row["district"], (row["overall_MAI"], row["opportunity_gap_score"]), 
-                                 xytext=(5, 5), textcoords="offset points", fontsize=9, fontweight='bold', color="#2c3e50")
-                
-            ax2.set_xlabel("Overall MAI (Market Scale)", fontweight='bold')
-            ax2.set_ylabel("Opportunity Gap Score (Unmet Demand)", fontweight='bold')
-            plt.tight_layout()
-            st.pyplot(fig2)
+            fig2.update_traces(marker=dict(size=10, opacity=0.8, line=dict(width=1, color="DarkSlateGrey")))
+            fig2.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", margin=dict(l=0, r=0, t=30, b=0))
+            st.plotly_chart(fig2, use_container_width=True)
         else:
             st.info("Upload provider metrics (e.g., `doctors_per_1000`) to unlock the Opportunity Gap Chart.")
 
@@ -1174,24 +1137,18 @@ with tab3:
             row = final_df[final_df["district"] == selected_district].iloc[0]
             
             if exp:
-                st.markdown(f"""
-                <div style='background-color:#e8f8f5; border: 1px solid #2ecc71; padding: 15px; border-radius: 8px; margin-bottom: 20px;'>
-                    <h4 style='margin-top:0; color:#27ae60;'>📋 Strategic Field Directive</h4>
-                    <p style='margin-bottom:0; font-size:16px;'><b>{row.get('recommended_strategy', 'N/A')}</b></p>
-                </div>
-                """, unsafe_allow_html=True)
+                st.info(f"**📋 Strategic Field Directive:** {row.get('recommended_strategy', 'N/A')}")
                 
+                # Using native st.metric to guarantee contrast and readability across Light/Dark modes
                 c1, c2, c3, c4 = st.columns(4)
-                with c1:
-                    st.markdown(f"<div class='metric-card'><div class='metric-label'>Overall MAI</div><div class='metric-value'>{exp['score']}</div></div>", unsafe_allow_html=True)
-                with c2:
-                    st.markdown(f"<div class='metric-card'><div class='metric-label'>Projected 2031 MAI</div><div class='metric-value'>{row.get('overall_MAI_future', 'N/A')}</div></div>", unsafe_allow_html=True)
-                with c3:
-                    st.markdown(f"<div class='metric-card'><div class='metric-label'>Data Confidence</div><div class='metric-value'>{row.get('data_confidence_score', 'N/A')}%</div></div>", unsafe_allow_html=True)
-                with c4:
-                    st.markdown(f"<div class='metric-card'><div class='metric-label'>Persona Segment</div><div class='metric-value' style='font-size:18px;'>{row.get('segment_label', 'N/A')}</div></div>", unsafe_allow_html=True)
                 
-                st.write("")
+                future_delta = round(row.get('overall_MAI_future', exp['score']) - exp['score'], 1)
+                
+                c1.metric("Overall MAI", exp["score"], delta=f"{future_delta} Projected by 2031")
+                c2.metric("Opportunity Gap Score", row.get("opportunity_gap_score", "N/A"))
+                c3.metric("Data Confidence", f"{row.get('data_confidence_score', 'N/A')}%")
+                c4.metric("Persona Segment", row.get("segment_label", "N/A"))
+                
                 st.write("---")
                 st.subheader("Algorithmic Score Decomposition")
                 st.markdown(f"*Showing how specific variables pushed this district above or below the national portfolio average score of **{exp['avg_score']}**.*")
@@ -1202,14 +1159,14 @@ with tab3:
                     for v, c in exp["top_positive"]:
                         if c > 0: 
                             clean_name = v.replace('_', ' ').title()
-                            st.markdown(f"**{clean_name}**: <span style='color:green;'>+{c:.1f} points</span>", unsafe_allow_html=True)
+                            st.markdown(f"**{clean_name}**: +{c:.1f} points")
                         
                 with col_neg:
                     st.error("**⚠️ Structural Weaknesses (Negative Drivers)**")
                     for v, c in exp["top_negative"]:
                         if c < 0: 
                             clean_name = v.replace('_', ' ').title()
-                            st.markdown(f"**{clean_name}**: <span style='color:red;'>{c:.1f} points</span>", unsafe_allow_html=True)
+                            st.markdown(f"**{clean_name}**: {c:.1f} points")
                             
                 with st.expander("📖 Data Dictionary: What do these parameters mean?"):
                     st.markdown("""
